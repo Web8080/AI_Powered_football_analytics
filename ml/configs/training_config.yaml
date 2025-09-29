@@ -1,0 +1,329 @@
+# Godseye AI Training Configuration
+# Comprehensive configuration for training all sports analytics models
+
+# Experiment settings
+experiment_name: "godseye_sports_analytics"
+run_name: "premier_league_models_v1"
+mlflow_uri: "http://localhost:5000"
+
+# Data paths
+data:
+  detection_path: "data/soccernet_v3/detection"
+  pose_path: "data/soccernet_v3/pose"
+  events_path: "data/soccernet_v3/events"
+  tactical_path: "data/soccernet_v3/tactical"
+  validation_split: 0.2
+  test_split: 0.1
+
+# Training parameters
+training:
+  epochs: 100
+  batch_size: 16
+  learning_rate: 0.001
+  weight_decay: 0.0001
+  num_workers: 4
+  pin_memory: true
+  gradient_clip_norm: 1.0
+  
+  # Learning rate scheduling
+  scheduler:
+    type: "cosine"
+    warmup_epochs: 5
+    min_lr: 0.00001
+  
+  # Early stopping
+  early_stopping:
+    enabled: true
+    patience: 10
+    min_delta: 0.001
+  
+  # Mixed precision training
+  mixed_precision: true
+  
+  # Model checkpointing
+  checkpoint:
+    save_every: 10
+    save_best: true
+    metric: "f1_score"
+
+# Model configurations
+models:
+  detection:
+    enabled: true
+    num_classes: 8  # team_a_player, team_a_goalkeeper, team_b_player, team_b_goalkeeper, referee, ball, other, staff
+    backbone: "resnet50"
+    input_size: [640, 640]
+    
+    # YOLO specific settings
+    yolo:
+      model_size: "n"  # n, s, m, l, x
+      pretrained: true
+      freeze_backbone: false
+      
+    # Data augmentation
+    augmentation:
+      mosaic: 0.5
+      mixup: 0.1
+      copy_paste: 0.3
+      hsv_h: 0.015
+      hsv_s: 0.7
+      hsv_v: 0.4
+      degrees: 10.0
+      translate: 0.1
+      scale: 0.5
+      shear: 2.0
+      perspective: 0.0
+      flipud: 0.0
+      fliplr: 0.5
+      
+  tracking:
+    enabled: true
+    type: "deepsort"  # deepsort, bytetrack, strongsort
+    max_age: 30
+    min_hits: 3
+    iou_threshold: 0.3
+    
+    # Re-identification
+    reid:
+      enabled: true
+      model: "osnet"
+      feature_dim: 512
+      
+  pose:
+    enabled: true
+    num_keypoints: 17  # COCO format
+    backbone: "hrnet"
+    input_size: [256, 256]
+    
+    # Keypoint specific settings
+    keypoints:
+      confidence_threshold: 0.5
+      nms_threshold: 0.1
+      
+    # Loss functions
+    loss:
+      type: "mse"  # mse, smooth_l1, wing
+      weight: 1.0
+      
+  events:
+    enabled: true
+    num_events: 17  # SoccerNet events
+    backbone: "slowfast"
+    input_size: [224, 224]
+    temporal_window: 32
+    
+    # Event specific settings
+    events_list:
+      - "Goal"
+      - "Yellow card"
+      - "Red card"
+      - "Substitution"
+      - "Kick-off"
+      - "Throw-in"
+      - "Corner kick"
+      - "Free kick"
+      - "Offside"
+      - "Shots on target"
+      - "Shots off target"
+      - "Clearance"
+      - "Ball out of play"
+      - "Indirect free-kick"
+      - "Direct free-kick"
+      - "Penalty"
+      - "Foul"
+      
+  tactical:
+    enabled: true
+    num_formations: 10
+    backbone: "resnet50"
+    
+    # Formation detection
+    formations:
+      - "4-4-2"
+      - "4-3-3"
+      - "3-5-2"
+      - "4-2-3-1"
+      - "3-4-3"
+      - "5-3-2"
+      - "4-1-4-1"
+      - "3-4-1-2"
+      - "4-5-1"
+      - "5-4-1"
+
+# Data augmentation pipelines
+augmentation:
+  detection:
+    - type: "horizontal_flip"
+      probability: 0.5
+    - type: "rotation"
+      limit: 15
+      probability: 0.3
+    - type: "brightness_contrast"
+      brightness_limit: 0.2
+      contrast_limit: 0.2
+      probability: 0.3
+    - type: "hue_saturation_value"
+      hue_shift_limit: 20
+      sat_shift_limit: 30
+      val_shift_limit: 20
+      probability: 0.3
+    - type: "gauss_noise"
+      var_limit: (10.0, 50.0)
+      probability: 0.2
+      
+  pose:
+    - type: "horizontal_flip"
+      probability: 0.5
+    - type: "rotation"
+      limit: 10
+      probability: 0.3
+    - type: "brightness_contrast"
+      brightness_limit: 0.1
+      contrast_limit: 0.1
+      probability: 0.2
+      
+  events:
+    - type: "horizontal_flip"
+      probability: 0.5
+    - type: "temporal_crop"
+      probability: 0.3
+    - type: "brightness_contrast"
+      brightness_limit: 0.1
+      contrast_limit: 0.1
+      probability: 0.2
+
+# Evaluation metrics
+evaluation:
+  detection:
+    metrics: ["mAP", "mAP_50", "mAP_75", "precision", "recall", "f1"]
+    iou_thresholds: [0.5, 0.75, 0.9]
+    
+  tracking:
+    metrics: ["MOTA", "MOTP", "IDF1", "MT", "ML", "FP", "FN", "IDs"]
+    
+  pose:
+    metrics: ["PCK", "PCK_50", "PCK_75", "AUC"]
+    thresholds: [0.05, 0.1, 0.2, 0.3, 0.4, 0.5]
+    
+  events:
+    metrics: ["accuracy", "precision", "recall", "f1", "mAP"]
+    
+  tactical:
+    metrics: ["accuracy", "precision", "recall", "f1"]
+
+# Deployment optimization
+deployment:
+  quantization:
+    enabled: true
+    method: "dynamic"  # dynamic, static, qat
+    dtype: "qint8"
+    
+  pruning:
+    enabled: false
+    method: "magnitude"
+    sparsity: 0.1
+    
+  onnx_export:
+    enabled: true
+    opset_version: 11
+    optimize: true
+    
+  tensorrt:
+    enabled: false
+    precision: "fp16"
+    max_batch_size: 1
+    
+  # Edge deployment settings
+  edge:
+    target_fps: 25
+    max_latency_ms: 100
+    memory_limit_mb: 2048
+    power_limit_w: 50
+
+# Hardware optimization
+hardware:
+  # CPU optimization
+  cpu:
+    num_threads: 4
+    enable_mkldnn: true
+    enable_mkl: true
+    
+  # GPU optimization
+  gpu:
+    enable_cudnn: true
+    enable_tensorrt: false
+    mixed_precision: true
+    memory_fraction: 0.8
+    
+  # Multi-GPU training
+  multi_gpu:
+    enabled: false
+    strategy: "ddp"  # ddp, ddp_spawn, dp
+    sync_batchnorm: true
+
+# Logging and monitoring
+logging:
+  level: "INFO"
+  log_every_n_steps: 10
+  log_images: true
+  log_predictions: true
+  
+  # TensorBoard
+  tensorboard:
+    enabled: true
+    log_dir: "logs/tensorboard"
+    
+  # Weights & Biases
+  wandb:
+    enabled: false
+    project: "godseye-ai"
+    entity: "your-entity"
+
+# Model registry
+model_registry:
+  enabled: true
+  stage: "staging"  # staging, production, archived
+  version: "1.0.0"
+  
+  # Model validation
+  validation:
+    enabled: true
+    threshold:
+      mAP: 0.8
+      MOTA: 0.7
+      PCK: 0.85
+      accuracy: 0.9
+
+# Reproducibility
+reproducibility:
+  seed: 42
+  deterministic: true
+  benchmark: false
+  
+# Resource management
+resources:
+  max_memory_gb: 16
+  max_cpu_percent: 80
+  max_gpu_memory_gb: 8
+  
+# Advanced features
+advanced:
+  # Knowledge distillation
+  distillation:
+    enabled: false
+    teacher_model: "teacher.pth"
+    temperature: 3.0
+    alpha: 0.7
+    
+  # Adversarial training
+  adversarial:
+    enabled: false
+    epsilon: 0.01
+    alpha: 0.01
+    steps: 10
+    
+  # Self-supervised learning
+  self_supervised:
+    enabled: false
+    method: "simclr"  # simclr, moco, swav
+    temperature: 0.1

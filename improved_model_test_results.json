@@ -1,0 +1,12 @@
+{
+  "total_detections": 13,
+  "class_counts": {
+    "referee": 10,
+    "ball": 3
+  },
+  "referee_detections": 10,
+  "team_a_detections": 0,
+  "team_b_detections": 0,
+  "ball_detections": 3,
+  "frames_tested": 5
+}

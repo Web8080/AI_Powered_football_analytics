@@ -1,0 +1,25 @@
+{
+  "model_name": "YOLOv8 Football Detection",
+  "version": "1.0.0",
+  "created_date": "2025-09-29T01:15:29.713774",
+  "model_path": "models/yolov8_football.pt",
+  "classes": [
+    "team_a_player",
+    "team_a_goalkeeper",
+    "team_b_player",
+    "team_b_goalkeeper",
+    "referee",
+    "ball",
+    "other",
+    "staff"
+  ],
+  "input_size": [
+    640,
+    640
+  ],
+  "framework": "PyTorch",
+  "training_epochs": 10,
+  "training_device": "CPU",
+  "model_size": "nano (yolov8n)",
+  "description": "Simple YOLOv8 model trained on synthetic football data for Godseye AI sports analytics"
+}

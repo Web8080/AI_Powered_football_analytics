@@ -1,0 +1,303 @@
+version: '3.8'
+
+services:
+  # ML Training Service
+  ml-training:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: training
+    container_name: godseye-ml-training
+    environment:
+      - MLFLOW_TRACKING_URI=http://mlflow:5000
+      - MINIO_ENDPOINT=http://minio:9000
+      - MINIO_ACCESS_KEY=minioadmin
+      - MINIO_SECRET_KEY=minioadmin
+      - CUDA_VISIBLE_DEVICES=0
+      - PYTHONPATH=/app
+    volumes:
+      - ./data:/app/data
+      - ./models:/app/models
+      - ./logs:/app/logs
+      - ./artifacts:/app/artifacts
+      - ./shared:/app/shared
+      - ./configs:/app/configs
+    ports:
+      - "8888:8888"  # Jupyter
+      - "6006:6006"  # TensorBoard
+    networks:
+      - godseye-network
+    depends_on:
+      - mlflow
+      - minio
+    profiles:
+      - training
+    command: >
+      bash -c "
+        echo 'Starting ML Training Environment...' &&
+        echo 'Available commands:' &&
+        echo '  python download_dataset.py --dataset soccernet_v3' &&
+        echo '  python train.py --config configs/training_config.yaml' &&
+        echo '  jupyter lab --ip=0.0.0.0 --port=8888 --no-browser --allow-root' &&
+        echo '  tensorboard --logdir=logs/tensorboard --host=0.0.0.0 --port=6006' &&
+        tail -f /dev/null
+      "
+
+  # CPU Training Service (for systems without GPU)
+  ml-training-cpu:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: cpu-training
+    container_name: godseye-ml-training-cpu
+    environment:
+      - MLFLOW_TRACKING_URI=http://mlflow:5000
+      - MINIO_ENDPOINT=http://minio:9000
+      - MINIO_ACCESS_KEY=minioadmin
+      - MINIO_SECRET_KEY=minioadmin
+      - PYTHONPATH=/app
+    volumes:
+      - ./data:/app/data
+      - ./models:/app/models
+      - ./logs:/app/logs
+      - ./artifacts:/app/artifacts
+      - ./shared:/app/shared
+      - ./configs:/app/configs
+    ports:
+      - "8889:8888"  # Jupyter
+      - "6007:6006"  # TensorBoard
+    networks:
+      - godseye-network
+    depends_on:
+      - mlflow
+      - minio
+    profiles:
+      - training-cpu
+    command: >
+      bash -c "
+        echo 'Starting CPU ML Training Environment...' &&
+        echo 'Available commands:' &&
+        echo '  python download_dataset.py --dataset soccernet_v3' &&
+        echo '  python train.py --config configs/training_config.yaml' &&
+        echo '  jupyter lab --ip=0.0.0.0 --port=8888 --no-browser --allow-root' &&
+        echo '  tensorboard --logdir=logs/tensorboard --host=0.0.0.0 --port=6006' &&
+        tail -f /dev/null
+      "
+
+  # ML Inference Service
+  ml-inference:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: inference
+    container_name: godseye-ml-inference
+    environment:
+      - MLFLOW_TRACKING_URI=http://mlflow:5000
+      - MINIO_ENDPOINT=http://minio:9000
+      - MINIO_ACCESS_KEY=minioadmin
+      - MINIO_SECRET_KEY=minioadmin
+      - CUDA_VISIBLE_DEVICES=0
+      - PYTHONPATH=/app
+    volumes:
+      - ./models:/app/models
+      - ./shared:/app/shared
+      - ./inference:/app/inference
+    ports:
+      - "8002:8001"  # FastAPI inference service
+    networks:
+      - godseye-network
+    depends_on:
+      - mlflow
+      - minio
+    profiles:
+      - inference
+    command: >
+      bash -c "
+        echo 'Starting ML Inference Service...' &&
+        cd /app/inference &&
+        python serve.py --host 0.0.0.0 --port 8001
+      "
+
+  # Edge Deployment Service (for Jetson/Raspberry Pi simulation)
+  ml-edge:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: edge-deployment
+    container_name: godseye-ml-edge
+    environment:
+      - PYTHONPATH=/app
+      - EDGE_DEVICE_TYPE=jetson
+      - MODEL_PATH=/app/models
+    volumes:
+      - ./models:/app/models
+      - ./shared:/app/shared
+      - ./edge:/app/edge
+    ports:
+      - "8003:8001"  # Edge inference service
+    networks:
+      - godseye-network
+    profiles:
+      - edge
+    command: >
+      bash -c "
+        echo 'Starting Edge ML Service...' &&
+        cd /app/edge &&
+        ./start_edge_service.sh
+      "
+
+  # Jupyter Lab Service
+  jupyter:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: training
+    container_name: godseye-jupyter
+    environment:
+      - MLFLOW_TRACKING_URI=http://mlflow:5000
+      - MINIO_ENDPOINT=http://minio:9000
+      - MINIO_ACCESS_KEY=minioadmin
+      - MINIO_SECRET_KEY=minioadmin
+      - PYTHONPATH=/app
+    volumes:
+      - ./data:/app/data
+      - ./models:/app/models
+      - ./logs:/app/logs
+      - ./artifacts:/app/artifacts
+      - ./shared:/app/shared
+      - ./configs:/app/configs
+      - ./notebooks:/app/notebooks
+    ports:
+      - "8888:8888"
+    networks:
+      - godseye-network
+    depends_on:
+      - mlflow
+      - minio
+    profiles:
+      - jupyter
+    command: >
+      bash -c "
+        echo 'Starting Jupyter Lab...' &&
+        jupyter lab --ip=0.0.0.0 --port=8888 --no-browser --allow-root --NotebookApp.token='' --NotebookApp.password=''
+      "
+
+  # TensorBoard Service
+  tensorboard:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: training
+    container_name: godseye-tensorboard
+    environment:
+      - PYTHONPATH=/app
+    volumes:
+      - ./logs:/app/logs
+    ports:
+      - "6006:6006"
+    networks:
+      - godseye-network
+    profiles:
+      - tensorboard
+    command: >
+      bash -c "
+        echo 'Starting TensorBoard...' &&
+        tensorboard --logdir=logs/tensorboard --host=0.0.0.0 --port=6006
+      "
+
+  # Model Evaluation Service
+  ml-evaluation:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: training
+    container_name: godseye-ml-evaluation
+    environment:
+      - MLFLOW_TRACKING_URI=http://mlflow:5000
+      - MINIO_ENDPOINT=http://minio:9000
+      - MINIO_ACCESS_KEY=minioadmin
+      - MINIO_SECRET_KEY=minioadmin
+      - PYTHONPATH=/app
+    volumes:
+      - ./data:/app/data
+      - ./models:/app/models
+      - ./logs:/app/logs
+      - ./artifacts:/app/artifacts
+      - ./shared:/app/shared
+      - ./configs:/app/configs
+    networks:
+      - godseye-network
+    depends_on:
+      - mlflow
+      - minio
+    profiles:
+      - evaluation
+    command: >
+      bash -c "
+        echo 'Starting Model Evaluation...' &&
+        python evaluate.py --config configs/evaluation_config.yaml
+      "
+
+  # Dataset Download Service
+  ml-download:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: training
+    container_name: godseye-ml-download
+    environment:
+      - PYTHONPATH=/app
+    volumes:
+      - ./data:/app/data
+      - ./shared:/app/shared
+    networks:
+      - godseye-network
+    profiles:
+      - download
+    command: >
+      bash -c "
+        echo 'Starting Dataset Download...' &&
+        python download_dataset.py --dataset soccernet_v3 --base-dir /app/data
+      "
+
+  # Model Optimization Service
+  ml-optimization:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: training
+    container_name: godseye-ml-optimization
+    environment:
+      - MLFLOW_TRACKING_URI=http://mlflow:5000
+      - MINIO_ENDPOINT=http://minio:9000
+      - MINIO_ACCESS_KEY=minioadmin
+      - MINIO_SECRET_KEY=minioadmin
+      - PYTHONPATH=/app
+    volumes:
+      - ./models:/app/models
+      - ./logs:/app/logs
+      - ./artifacts:/app/artifacts
+      - ./shared:/app/shared
+      - ./configs:/app/configs
+    networks:
+      - godseye-network
+    depends_on:
+      - mlflow
+      - minio
+    profiles:
+      - optimization
+    command: >
+      bash -c "
+        echo 'Starting Model Optimization...' &&
+        python optimize_models.py --config configs/optimization_config.yaml
+      "
+
+networks:
+  godseye-network:
+    external: true
+
+volumes:
+  ml_data:
+  ml_models:
+  ml_logs:
+  ml_artifacts:

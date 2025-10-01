@@ -1,0 +1,7 @@
+
+path: /Users/user/Football_analytics/improved_models/quick_dataset
+train: images
+val: images
+
+nc: 8
+names: ['team_a_player', 'team_a_goalkeeper', 'team_b_player', 'team_b_goalkeeper', 'referee', 'ball', 'outlier', 'staff']

@@ -1,0 +1,58 @@
+{
+  "match_data": {
+    "team_a": {
+      "name": "Team A",
+      "score": 0,
+      "possession": 50.0,
+      "shots": 0,
+      "passes": 0
+    },
+    "team_b": {
+      "name": "Team B",
+      "score": 0,
+      "possession": 50.0,
+      "shots": 0,
+      "passes": 0
+    },
+    "match_time": "00:10",
+    "events": [
+      {
+        "type": "offside",
+        "timestamp": 10,
+        "confidence": 0.6,
+        "description": "Offside detected"
+      },
+      {
+        "type": "offside",
+        "timestamp": 100,
+        "confidence": 0.6,
+        "description": "Offside detected"
+      },
+      {
+        "type": "offside",
+        "timestamp": 218,
+        "confidence": 0.6,
+        "description": "Offside detected"
+      },
+      {
+        "type": "corner",
+        "timestamp": 285,
+        "confidence": 0.8,
+        "description": "Corner kick detected"
+      },
+      {
+        "type": "corner",
+        "timestamp": 296,
+        "confidence": 0.8,
+        "description": "Corner kick detected"
+      }
+    ],
+    "players": {},
+    "ball_position": null,
+    "formation_a": "4-2-3-1",
+    "formation_b": "3-5-2"
+  },
+  "total_frames": 300,
+  "analysis_time": "2025-09-30T01:46:19.474186",
+  "model_path": "models/best_model.pt"
+}

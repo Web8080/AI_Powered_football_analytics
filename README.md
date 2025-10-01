@@ -48,6 +48,73 @@ Godseye AI is a comprehensive football analytics platform that provides real-tim
    ```
 
 3. **Install frontend dependencies**
+
+## 🏋️ **Training Options**
+
+### **Option 1: Google Colab Training (Under 1 Hour)**
+For quick testing and development:
+```bash
+# Copy google_colab_training.py to Google Colab
+# Run in Colab with GPU acceleration
+python google_colab_training.py
+```
+- Downloads limited SoccerNet data (10 games)
+- Quick training (20 epochs)
+- Under 1 hour total runtime
+- Perfect for testing and prototyping
+
+### **Option 2: Robust Local Training (24+ Hours)**
+For production-grade models:
+```bash
+# Full SoccerNet dataset download and training
+python robust_local_training.py
+```
+- Downloads complete SoccerNet dataset (~300GB)
+- Comprehensive training (200 epochs)
+- Advanced data augmentation
+- Production-ready model
+
+### **Option 3: PhD-Level Training Pipeline**
+For research and maximum accuracy:
+```bash
+# Advanced methodologies and ensemble methods
+python phd_level_training_pipeline.py
+```
+- Multi-scale feature pyramid networks
+- Curriculum learning and progressive training
+- Ensemble methods with model fusion
+- Advanced optimization techniques
+
+## 📊 **Core Classes**
+
+The AI system is trained to detect and classify:
+
+1. **team_a_player** - Team A outfield players
+2. **team_b_player** - Team B outfield players  
+3. **team_a_goalkeeper** - Team A goalkeeper
+4. **team_b_goalkeeper** - Team B goalkeeper
+5. **ball** - Football
+6. **referee** - Main referee
+7. **assistant_referee** - Linesmen
+8. **others** - Spectators, staff, etc.
+
+## 🎯 **Expected Training Times**
+
+| Method | Dataset Size | Training Time | Total Time |
+|--------|-------------|---------------|------------|
+| Google Colab | 10 games | 30 min | < 1 hour |
+| Local Training | 500+ games | 12+ hours | 24+ hours |
+| PhD Pipeline | 500+ games | 20+ hours | 30+ hours |
+
+## 📥 **SoccerNet Dataset**
+
+The system uses the official SoccerNet dataset with NDA password:
+- **Labels**: 95MB (downloaded automatically)
+- **Videos**: ~300GB (requires NDA password)
+- **Password**: Set in download scripts
+- **Download Time**: 10+ hours for full dataset
+
+### **Installation**
    ```bash
    cd frontend
    npm install

@@ -212,29 +212,19 @@ class ColabOptimizedTrainer:
                 split=["train"]
             )
             
-            # Download limited videos (first 10 games only)
-            logger.info("📥 Downloading labels only (videos not available)...")
+            # Download limited videos for frame extraction
+            logger.info("📥 Downloading limited videos for frame extraction...")
             try:
-                # Download labels first to get game list
-                logger.info("📥 Downloading labels to get game list...")
-                downloader.downloadGames(files=["Labels-v2.json"], split=["train"], verbose=True)
+                # Download videos for train split (limited to save time)
+                logger.info("📥 Downloading 224p videos for training...")
+                downloader.downloadGames(
+                    files=["1_224p.mkv", "2_224p.mkv"], 
+                    split=["train"]
+                )
+                logger.info("✅ Video download completed successfully!")
                 
-                # Get all available games from the downloaded structure
-                games = []
-                local_directory_path = Path(local_directory)
-                for league_dir in local_directory_path.glob("*"):
-                    if league_dir.is_dir() and league_dir.name not in ["annotations", "images"]:
-                        for season_dir in league_dir.glob("*"):
-                            if season_dir.is_dir():
-                                for game_dir in season_dir.glob("*"):
-                                    if game_dir.is_dir() and (game_dir / "Labels-v2.json").exists():
-                                        games.append(game_dir)
-                
-                logger.info(f"✅ Found {len(games)} games with labels")
-                logger.info("⚠️ Note: Videos not downloaded due to 404 errors - using labels only for training")
-                    
             except Exception as e:
-                logger.warning(f"Label download failed: {e}")
+                logger.warning(f"Video download failed: {e}")
                 logger.info("Continuing with labels only...")
             
             logger.info("✅ Limited SoccerNet download completed!")
@@ -277,7 +267,17 @@ class ColabOptimizedTrainer:
     
     def extract_frames_from_video(self, video_path, output_dir, game_id, start_frame=0):
         """Extract frames from video file"""
+        logger.info(f"🎬 Extracting frames from: {video_path}")
+        
+        if not video_path.exists():
+            logger.warning(f"❌ Video file does not exist: {video_path}")
+            return 0
+        
         cap = cv2.VideoCapture(str(video_path))
+        if not cap.isOpened():
+            logger.warning(f"❌ Could not open video: {video_path}")
+            return 0
+        
         frame_count = 0
         extracted_count = 0
         
@@ -293,8 +293,12 @@ class ColabOptimizedTrainer:
                 # Save frame
                 frame_filename = f"game_{game_id}_frame_{start_frame + extracted_count:06d}.jpg"
                 frame_path = output_dir / frame_filename
-                cv2.imwrite(str(frame_path), frame)
-                extracted_count += 1
+                success = cv2.imwrite(str(frame_path), frame)
+                if success:
+                    extracted_count += 1
+                    logger.info(f"✅ Saved frame: {frame_filename}")
+                else:
+                    logger.warning(f"❌ Failed to save frame: {frame_filename}")
                 
                 # Limit frames per video to save space
                 if extracted_count >= 50:  # Max 50 frames per video for Colab
@@ -303,27 +307,37 @@ class ColabOptimizedTrainer:
             frame_count += 1
         
         cap.release()
-        logger.info(f"Extracted {extracted_count} frames from {video_path.name}")
+        logger.info(f"🎬 Extracted {extracted_count} frames from {video_path.name}")
         return extracted_count
     
     def process_soccernet_game(self, game_dir, yolo_dir, game_id):
         """Process a single SoccerNet game to YOLO format"""
         try:
+            logger.info(f"🎮 Processing game: {game_dir.name}")
+            
             # Extract frames from videos first
             video_files = list(game_dir.glob("*.mkv"))
+            logger.info(f"📹 Found {len(video_files)} video files in {game_dir}")
+            
             if not video_files:
-                logger.warning(f"No video files found in {game_dir}")
+                logger.warning(f"❌ No video files found in {game_dir}")
+                # List all files in the directory for debugging
+                all_files = list(game_dir.glob("*"))
+                logger.info(f"📁 All files in {game_dir}: {[f.name for f in all_files]}")
                 return
             
             # Extract frames from videos
             frame_count = 0
             for video_file in video_files:
-                frame_count += self.extract_frames_from_video(
+                logger.info(f"🎬 Processing video: {video_file.name}")
+                extracted = self.extract_frames_from_video(
                     video_file, 
                     yolo_dir / "train" / "images", 
                     game_id, 
                     frame_count
                 )
+                frame_count += extracted
+                logger.info(f"📊 Total frames extracted so far: {frame_count}")
             
             # Process labels if available
             labels_file = game_dir / "Labels-v2.json"

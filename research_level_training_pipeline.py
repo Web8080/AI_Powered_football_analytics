@@ -1,11 +1,11 @@
 #!/usr/bin/env python3
 """
 ===============================================================================
-GODSEYE AI - PHD-LEVEL TRAINING PIPELINE
+GODSEYE AI - RESEARCH-LEVEL TRAINING PIPELINE (24 HOURS MAX)
 ===============================================================================
 
-Advanced training pipeline implementing PhD-level methodologies for football
-analytics using SoccerNet dataset with 7 core classes.
+Research-level training pipeline with advanced methodologies for football
+analytics using SoccerNet dataset with 7 core classes, optimized for 4GB space.
 
 CORE CLASSES:
 1. team_a_player - Team A outfield players
@@ -27,6 +27,7 @@ ADVANCED METHODOLOGIES:
 - Cross-validation with stratified sampling
 - Advanced evaluation metrics (mAP, IoU, F1, etc.)
 - Real-time training monitoring and visualization
+- Space-optimized for 4GB available storage
 
 Author: Victor
 Date: 2025

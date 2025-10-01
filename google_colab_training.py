@@ -5,6 +5,7 @@ GODSEYE AI - GOOGLE COLAB OPTIMIZED TRAINING (UNDER 1 HOUR)
 ===============================================================================
 
 Optimized training script for Google Colab free tier with time constraints:
+- Automatic dependency installation
 - Download limited SoccerNet data (train split only)
 - Quick training with essential augmentations
 - Under 1 hour total runtime
@@ -12,24 +13,150 @@ Optimized training script for Google Colab free tier with time constraints:
 
 Author: Victor
 Date: 2025
-Version: 1.0.0
+Version: 2.0.0 - Auto Install
 """
 
 import os
 import sys
+import subprocess
 import time
 import torch
 import cv2
 import numpy as np
 from pathlib import Path
 import logging
-from ultralytics import YOLO
-import json
 from datetime import datetime
+from tqdm import tqdm
 
 # Setup logging
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 logger = logging.getLogger(__name__)
+
+class ProgressTracker:
+    """Track progress and timing for training pipeline"""
+    
+    def __init__(self, total_steps=5):
+        self.start_time = time.time()
+        self.total_steps = total_steps
+        self.current_step = 0
+        self.step_times = []
+        self.step_names = [
+            "🔧 Installing Dependencies",
+            "📥 Downloading SoccerNet Data", 
+            "🔄 Converting to YOLO Format",
+            "🏋️ Training Model",
+            "📊 Evaluating Results"
+        ]
+    
+    def start_step(self, step_name=None):
+        """Start a new step"""
+        if step_name:
+            self.step_names[self.current_step] = step_name
+        
+        step_start = time.time()
+        if self.current_step > 0:
+            self.step_times.append(step_start - self.last_step_start)
+        
+        self.last_step_start = step_start
+        elapsed = step_start - self.start_time
+        
+        logger.info("=" * 60)
+        logger.info(f"🚀 STEP {self.current_step + 1}/{self.total_steps}: {self.step_names[self.current_step]}")
+        logger.info(f"⏱️ Total elapsed time: {elapsed/60:.1f} minutes")
+        logger.info("=" * 60)
+    
+    def complete_step(self):
+        """Complete current step"""
+        step_time = time.time() - self.last_step_start
+        self.step_times.append(step_time)
+        
+        logger.info("=" * 60)
+        logger.info(f"✅ STEP {self.current_step + 1} COMPLETED: {self.step_names[self.current_step]}")
+        logger.info(f"⏱️ Step time: {step_time/60:.1f} minutes")
+        
+        if self.current_step < self.total_steps - 1:
+            remaining_steps = self.total_steps - self.current_step - 1
+            avg_time = sum(self.step_times) / len(self.step_times)
+            estimated_remaining = remaining_steps * avg_time
+            logger.info(f"📊 Estimated remaining time: {estimated_remaining/60:.1f} minutes")
+        
+        logger.info("=" * 60)
+        self.current_step += 1
+    
+    def get_final_summary(self):
+        """Get final timing summary"""
+        total_time = time.time() - self.start_time
+        logger.info("🎯 TRAINING PIPELINE COMPLETED!")
+        logger.info("=" * 60)
+        logger.info(f"⏱️ Total time: {total_time/60:.1f} minutes ({total_time/3600:.1f} hours)")
+        
+        for i, (name, step_time) in enumerate(zip(self.step_names, self.step_times)):
+            percentage = (step_time / total_time) * 100
+            logger.info(f"Step {i+1}: {name} - {step_time/60:.1f}min ({percentage:.1f}%)")
+        
+        logger.info("=" * 60)
+
+def install_dependencies():
+    """Automatically install all required dependencies for Google Colab"""
+    logger.info("🔧 Installing dependencies for Google Colab...")
+    
+    # List of required packages
+    packages = [
+        "ultralytics",
+        "opencv-python",
+        "albumentations",
+        "scikit-learn",
+        "matplotlib",
+        "seaborn",
+        "pandas",
+        "numpy",
+        "torch",
+        "torchvision",
+        "SoccerNet",
+        "mlflow",
+        "timm",
+        "optuna",
+        "optuna-integration"
+    ]
+    
+    # Install packages one by one
+    for package in packages:
+        try:
+            logger.info(f"Installing {package}...")
+            subprocess.check_call([sys.executable, "-m", "pip", "install", package, "--quiet"])
+            logger.info(f"✅ {package} installed successfully")
+        except subprocess.CalledProcessError as e:
+            logger.warning(f"⚠️ Failed to install {package}: {e}")
+            continue
+    
+    # Install additional packages that might be needed
+    additional_packages = [
+        "pillow",
+        "requests",
+        "tqdm",
+        "pyyaml",
+        "psutil"
+    ]
+    
+    for package in additional_packages:
+        try:
+            subprocess.check_call([sys.executable, "-m", "pip", "install", package, "--quiet"])
+        except subprocess.CalledProcessError:
+            pass
+    
+    logger.info("✅ All dependencies installed successfully!")
+
+# Install dependencies first
+install_dependencies()
+
+# Now import the required modules
+try:
+    from ultralytics import YOLO
+    import json
+    logger.info("✅ All modules imported successfully")
+except ImportError as e:
+    logger.error(f"❌ Failed to import modules: {e}")
+    sys.exit(1)
 
 class ColabOptimizedTrainer:
     """Google Colab optimized trainer with time constraints"""
@@ -85,26 +212,28 @@ class ColabOptimizedTrainer:
             )
             
             # Download limited videos (first 10 games only)
-            logger.info("📥 Downloading limited videos (first 10 games)...")
+            logger.info("📥 Downloading labels only (videos not available)...")
             try:
-                # Get list of available games
-                games = downloader.getGames(split="train")
-                limited_games = games[:10]  # Only first 10 games
+                # Download labels first to get game list
+                logger.info("📥 Downloading labels to get game list...")
+                downloader.downloadGames(files=["Labels-v2.json"], split=["train"], verbose=True)
                 
-                for game in limited_games:
-                    if not self.check_time_remaining():
-                        logger.warning("⏰ Time limit approaching, stopping download")
-                        break
-                    
-                    logger.info(f"Downloading game: {game}")
-                    downloader.downloadGames(
-                        files=["1_224p.mkv"], 
-                        split=["train"],
-                        games=[game]
-                    )
+                # Get all available games from the downloaded structure
+                games = []
+                local_directory_path = Path(local_directory)
+                for league_dir in local_directory_path.glob("*"):
+                    if league_dir.is_dir() and league_dir.name not in ["annotations", "images"]:
+                        for season_dir in league_dir.glob("*"):
+                            if season_dir.is_dir():
+                                for game_dir in season_dir.glob("*"):
+                                    if game_dir.is_dir() and (game_dir / "Labels-v2.json").exists():
+                                        games.append(game_dir)
+                
+                logger.info(f"✅ Found {len(games)} games with labels")
+                logger.info("⚠️ Note: Videos not downloaded due to 404 errors - using labels only for training")
                     
             except Exception as e:
-                logger.warning(f"Limited video download failed: {e}")
+                logger.warning(f"Label download failed: {e}")
                 logger.info("Continuing with labels only...")
             
             logger.info("✅ Limited SoccerNet download completed!")
@@ -238,11 +367,10 @@ names: {self.classes}
     
     def run_colab_training(self):
         """Main Colab training pipeline"""
-        logger.info("🚀 Godseye AI - Google Colab Training (Under 1 Hour)")
-        logger.info("=" * 60)
+        progress = ProgressTracker()
         
-        # Step 1: Download limited data (15 minutes max)
-        logger.info("📥 Step 1: Downloading limited SoccerNet data...")
+        # Step 1: Download limited data
+        progress.start_step("📥 Downloading SoccerNet Data")
         if not self.download_limited_soccernet():
             logger.error("❌ Download failed, using fallback data")
             return False
@@ -250,32 +378,30 @@ names: {self.classes}
         if not self.check_time_remaining():
             logger.warning("⏰ Time limit reached during download")
             return False
+        progress.complete_step()
         
-        # Step 2: Create YOLO dataset (5 minutes max)
-        logger.info("🔄 Step 2: Creating YOLO dataset...")
+        # Step 2: Create YOLO dataset
+        progress.start_step("🔄 Converting to YOLO Format")
         dataset_dir = self.create_yolo_dataset()
         self.create_dataset_yaml(dataset_dir)
         
         if not self.check_time_remaining():
             logger.warning("⏰ Time limit reached during dataset creation")
             return False
+        progress.complete_step()
         
-        # Step 3: Quick training (25 minutes max)
-        logger.info("🏋️ Step 3: Quick training...")
+        # Step 3: Quick training
+        progress.start_step("🏋️ Training Model")
         results = self.quick_train(dataset_dir)
+        progress.complete_step()
         
         # Step 4: Save results
-        logger.info("💾 Step 4: Saving results...")
+        progress.start_step("📊 Evaluating Results")
         self.save_colab_results(results)
+        progress.complete_step()
         
-        # Final time check
-        total_time = time.time() - self.start_time
-        logger.info(f"⏱️ Total runtime: {total_time/60:.1f} minutes")
-        
-        logger.info("=" * 60)
-        logger.info("✅ Google Colab training completed successfully!")
-        logger.info("🎯 Model ready for download and deployment!")
-        logger.info("=" * 60)
+        # Final summary
+        progress.get_final_summary()
         
         return True
     

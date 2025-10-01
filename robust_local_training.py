@@ -347,8 +347,8 @@ class RobustLocalTrainer:
                     
                     # Map SoccerNet categories to our classes
                     class_id = self.map_soccernet_category(category_id)
-                if class_id is None:
-                    continue
+                    if class_id is None:
+                        continue
                 
                 # Create YOLO format label
                 yolo_label = f"{class_id} {bbox[0]} {bbox[1]} {bbox[2]} {bbox[3]}\n"

@@ -4,6 +4,7 @@ import { Toaster } from 'react-hot-toast';
 import { ErrorBoundary } from 'react-error-boundary';
 import { HelmetProvider } from 'react-helmet-async';
 import MainDashboard from './components/MainDashboard';
+import EnhancedAnalyticsDashboard from './components/EnhancedAnalyticsDashboard';
 import './App.css';
 
 // Create a client
@@ -46,6 +47,8 @@ const ErrorFallback: React.FC<{ error: Error; resetErrorBoundary: () => void }> 
 );
 
 const App: React.FC = () => {
+  const [currentView, setCurrentView] = useState<'main' | 'enhanced'>('enhanced');
+
   return (
     <HelmetProvider>
       <ErrorBoundary
@@ -56,7 +59,11 @@ const App: React.FC = () => {
       >
         <QueryClientProvider client={queryClient}>
           <div className="App">
-            <MainDashboard />
+            {currentView === 'main' ? (
+              <MainDashboard />
+            ) : (
+              <EnhancedAnalyticsDashboard />
+            )}
             <Toaster
               position="top-right"
               toastOptions={{

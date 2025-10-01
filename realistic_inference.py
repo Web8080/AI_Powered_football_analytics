@@ -20,6 +20,7 @@ import cv2
 import json
 import argparse
 import numpy as np
+import os
 from pathlib import Path
 from datetime import datetime
 from ultralytics import YOLO
@@ -27,10 +28,21 @@ from collections import defaultdict, Counter
 import math
 
 class RealisticFootballAnalyzer:
-    def __init__(self, model_path="models/yolov8_improved_referee.pt"):
+    def __init__(self, model_path="models/godseye_ai_model.pt"):
         """Initialize the realistic analyzer"""
         self.model_path = model_path
-        self.model = YOLO(model_path)
+        
+        # Try to load trained model, fallback to default
+        try:
+            if os.path.exists(model_path):
+                self.model = YOLO(model_path)
+                print(f"✅ Loaded trained Godseye AI model from {model_path}")
+            else:
+                self.model = YOLO('yolov8n.pt')
+                print("⚠️ Trained model not found, using default YOLOv8")
+        except Exception as e:
+            self.model = YOLO('yolov8n.pt')
+            print(f"⚠️ Error loading trained model: {e}, using default YOLOv8")
         
         # Class names with proper mapping
         self.class_names = [

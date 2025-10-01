@@ -209,7 +209,8 @@ class RobustLocalTrainer:
             
             # Initialize downloader
             downloader = SoccerNetDownloader(LocalDirectory=local_directory)
-            downloader.password = "s0cc3rn3t"
+            # Password should be set via environment variable or user input
+            downloader.password = os.getenv("SOCCERNET_PASSWORD", input("Enter SoccerNet password: "))
             
             # Download labels for all splits (small, ~95MB)
             logger.info("📥 Downloading labels for all splits...")

@@ -25,8 +25,9 @@ Godseye AI represents a comprehensive computer vision platform designed for prof
    - [4.3 Real-time Processing Pipeline](#43-real-time-processing-pipeline)
 5. [Results and Performance](#results-and-performance)
 6. [Deployment and Scalability](#deployment-and-scalability)
-7. [Future Work](#future-work)
-8. [References](#references)
+7. [Security and Best Practices](#security-and-best-practices)
+8. [Future Work](#future-work)
+9. [References](#references)
 
 ## 1. Introduction
 
@@ -207,6 +208,16 @@ We have developed multiple training approaches to address different use cases an
 - Aggressive data augmentation
 - Early stopping with patience=5
 - Optimized for GPU acceleration
+- **Security**: Uses environment variables for SoccerNet password
+
+**⚠️ Security Note**: The SoccerNet dataset requires an NDA password. Set it securely:
+```bash
+# Option 1: Environment variable
+export SOCCERNET_PASSWORD="your_password_here"
+
+# Option 2: Interactive input (script will prompt)
+python google_colab_training.py
+```
 
 ```python
 # Key parameters for Colab training
@@ -230,6 +241,16 @@ model.train(
 - Progressive data loading
 - Memory-efficient batch processing
 - Checkpoint-based training
+- **Security**: Uses environment variables for SoccerNet password
+
+**⚠️ Security Note**: Set your SoccerNet password securely:
+```bash
+# Option 1: Environment variable
+export SOCCERNET_PASSWORD="your_password_here"
+
+# Option 2: Interactive input (script will prompt)
+python robust_local_training.py
+```
 
 ```python
 # Space-optimized configuration
@@ -727,7 +748,80 @@ graph TB
 - **Caching Strategy**: Redis for session management and result caching
 - **CDN Integration**: CloudFront for static asset delivery
 
-## 7. Future Work
+## 7. Security and Best Practices
+
+### 7.1 Data Security
+
+**⚠️ CRITICAL**: Never commit passwords, API keys, or sensitive data to version control.
+
+#### 7.1.1 Environment Variables
+
+All sensitive configuration should use environment variables:
+
+```bash
+# Set SoccerNet password securely
+export SOCCERNET_PASSWORD="your_password_here"
+
+# Set database credentials
+export DATABASE_URL="postgresql://user:password@localhost:5432/godseye_ai"
+
+# Set API keys
+export OPENAI_API_KEY="your_openai_key"
+export STRIPE_SECRET_KEY="your_stripe_key"
+```
+
+#### 7.1.2 .env File Configuration
+
+For local development, create a `.env` file (already in `.gitignore`):
+
+```bash
+# .env file (DO NOT COMMIT)
+SOCCERNET_PASSWORD=your_soccernet_password
+DATABASE_URL=postgresql://user:password@localhost:5432/godseye_ai
+AWS_ACCESS_KEY_ID=your_aws_key
+AWS_SECRET_ACCESS_KEY=your_aws_secret
+SECRET_KEY=your_django_secret_key
+```
+
+#### 7.1.3 Training Script Security
+
+All training scripts now use secure password handling:
+
+```python
+# Secure password retrieval
+password = os.getenv("SOCCERNET_PASSWORD", input("Enter SoccerNet password: "))
+```
+
+### 7.2 Security Best Practices
+
+1. **Never commit sensitive data** to version control
+2. **Use environment variables** for all secrets
+3. **Rotate passwords regularly**
+4. **Use different passwords** for different environments
+5. **Monitor access logs**
+6. **Use strong, unique passwords**
+7. **Enable two-factor authentication** where possible
+
+### 7.3 NDA Compliance
+
+The SoccerNet dataset requires Non-Disclosure Agreement compliance:
+
+- **Password Protection**: Use environment variables only
+- **No Public Sharing**: Never share the dataset or password publicly
+- **Access Control**: Limit access to authorized personnel only
+- **Audit Trail**: Maintain logs of data access and usage
+
+### 7.4 Production Security
+
+For production deployment:
+
+- **HTTPS Only**: All communications encrypted
+- **API Authentication**: JWT tokens with expiration
+- **Rate Limiting**: Prevent abuse and DoS attacks
+- **Input Validation**: Sanitize all user inputs
+- **Database Security**: Encrypted connections and backups
+
+## 8. Future Work
 
 ### 7.1 Planned Enhancements
 

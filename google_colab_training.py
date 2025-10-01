@@ -275,35 +275,84 @@ class ColabOptimizedTrainer:
         logger.info(f"✅ Created YOLO dataset with {processed_count} games")
         return yolo_dir
     
+    def extract_frames_from_video(self, video_path, output_dir, game_id, start_frame=0):
+        """Extract frames from video file"""
+        cap = cv2.VideoCapture(str(video_path))
+        frame_count = 0
+        extracted_count = 0
+        
+        # Extract every 30th frame (1 frame per second at 30fps)
+        frame_interval = 30
+        
+        while True:
+            ret, frame = cap.read()
+            if not ret:
+                break
+            
+            if frame_count % frame_interval == 0:
+                # Save frame
+                frame_filename = f"game_{game_id}_frame_{start_frame + extracted_count:06d}.jpg"
+                frame_path = output_dir / frame_filename
+                cv2.imwrite(str(frame_path), frame)
+                extracted_count += 1
+                
+                # Limit frames per video to save space
+                if extracted_count >= 50:  # Max 50 frames per video for Colab
+                    break
+            
+            frame_count += 1
+        
+        cap.release()
+        logger.info(f"Extracted {extracted_count} frames from {video_path.name}")
+        return extracted_count
+    
     def process_soccernet_game(self, game_dir, yolo_dir, game_id):
         """Process a single SoccerNet game to YOLO format"""
         try:
-            labels_file = game_dir / "Labels-v2.json"
-            with open(labels_file, 'r') as f:
-                labels_data = json.load(f)
+            # Extract frames from videos first
+            video_files = list(game_dir.glob("*.mkv"))
+            if not video_files:
+                logger.warning(f"No video files found in {game_dir}")
+                return
             
-            # Process each annotation
-            for annotation in labels_data.get("annotations", []):
-                if not self.check_time_remaining():
-                    break
+            # Extract frames from videos
+            frame_count = 0
+            for video_file in video_files:
+                frame_count += self.extract_frames_from_video(
+                    video_file, 
+                    yolo_dir / "train" / "images", 
+                    game_id, 
+                    frame_count
+                )
+            
+            # Process labels if available
+            labels_file = game_dir / "Labels-v2.json"
+            if labels_file.exists():
+                with open(labels_file, 'r') as f:
+                    labels_data = json.load(f)
                 
-                # Extract frame info
-                frame_id = annotation.get("id", 0)
-                bbox = annotation.get("bbox", [])
-                category_id = annotation.get("category_id", 0)
-                
-                # Map SoccerNet categories to our classes
-                class_id = self.map_soccernet_category(category_id)
-                if class_id is None:
-                    continue
-                
-                # Create YOLO format label
-                yolo_label = f"{class_id} {bbox[0]} {bbox[1]} {bbox[2]} {bbox[3]}\n"
-                
-                # Save label file
-                label_file = yolo_dir / "train" / "labels" / f"game_{game_id}_frame_{frame_id}.txt"
-                with open(label_file, 'w') as f:
-                    f.write(yolo_label)
+                # Process each annotation
+                for annotation in labels_data.get("annotations", []):
+                    if not self.check_time_remaining():
+                        break
+                    
+                    # Extract frame info
+                    frame_id = annotation.get("id", 0)
+                    bbox = annotation.get("bbox", [])
+                    category_id = annotation.get("category_id", 0)
+                    
+                    # Map SoccerNet categories to our classes
+                    class_id = self.map_soccernet_category(category_id)
+                    if class_id is None:
+                        continue
+                    
+                    # Create YOLO format label
+                    yolo_label = f"{class_id} {bbox[0]} {bbox[1]} {bbox[2]} {bbox[3]}\n"
+                    
+                    # Save label file
+                    label_file = yolo_dir / "train" / "labels" / f"game_{game_id}_frame_{frame_id}.txt"
+                    with open(label_file, 'w') as f:
+                        f.write(yolo_label)
                 
         except Exception as e:
             logger.warning(f"Error processing game {game_dir}: {e}")

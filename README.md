@@ -10,6 +10,25 @@
 
 Godseye AI represents a comprehensive computer vision platform designed for professional football analytics, combining state-of-the-art object detection, multi-object tracking, and real-time video analysis capabilities. This system addresses the growing demand for automated sports analytics in professional football, providing coaches, analysts, and broadcasters with actionable insights derived from match footage. Our approach leverages the SoccerNet dataset alongside advanced deep learning methodologies to achieve robust performance across diverse match conditions.
 
+## 🚀 Current Status (October 2025)
+
+### Training Progress
+- **✅ Quick Training**: Completed - Basic model trained with existing data
+- **🚀 Robust Training**: Currently Running - Professional training with real SoccerNet data only
+- **⏳ Research Training**: Pending - Will run after robust training completes
+- **⏳ Broadcast Training**: Pending - Final production model
+
+### ETA for Current Training
+- **Robust Training**: 4-6 hours remaining (200 epochs, real data only)
+- **Total Project**: 2-3 days for complete training pipeline
+
+### Key Achievements
+- ✅ Eliminated all synthetic data - using only real SoccerNet videos
+- ✅ Fixed training configuration issues
+- ✅ Implemented advanced feature engineering
+- ✅ Added MLflow tracking for experiment monitoring
+- ✅ Created professional-grade augmentation pipeline
+
 ## Table of Contents
 
 1. [Introduction](#introduction)

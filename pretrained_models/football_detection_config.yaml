@@ -1,0 +1,45 @@
+# Optimized Football Detection Configuration
+# Use with any YOLO model for better football performance
+
+detection_config:
+  confidence_threshold: 0.25
+  iou_threshold: 0.45
+  max_detections: 50
+  
+  # Football-specific classes (COCO dataset)
+  target_classes:
+    - 0   # person (players, referees)
+    - 32  # sports ball (football)
+    
+  # Team classification settings
+  team_classification:
+    enabled: true
+    method: "color_analysis"
+    jersey_region: 0.4  # Top 40% of person bbox
+    
+    color_ranges:
+      team_a:
+        hue: [0, 15, 165, 180]     # Red ranges
+        saturation: [50, 255]
+        value: [50, 255]
+        
+      team_b: 
+        hue: [90, 130]             # Blue range
+        saturation: [50, 255] 
+        value: [50, 255]
+        
+      referee:
+        hue: [15, 60]              # Yellow/green range
+        saturation: [30, 255]
+        value: [50, 255]
+        
+      white_kit:
+        saturation: [0, 50]        # Low saturation
+        value: [150, 255]          # High brightness
+
+# Performance optimization
+performance:
+  input_size: 640
+  batch_size: 1
+  device: "cpu"
+  half_precision: false

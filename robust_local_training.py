@@ -172,6 +172,41 @@ class RobustLocalTrainer:
         
         return True
     
+    def cleanup_excess_videos(self, local_directory):
+        """Clean up excess video files to free space"""
+        logger.info("🧹 Cleaning up excess video files...")
+        
+        try:
+            soccernet_dir = os.path.join(local_directory, "SoccerNet")
+            if not os.path.exists(soccernet_dir):
+                return
+            
+            # Find all video files
+            video_files = []
+            for root, dirs, files in os.walk(soccernet_dir):
+                for file in files:
+                    if file.endswith('.mkv'):
+                        video_files.append(os.path.join(root, file))
+            
+            logger.info(f"📹 Found {len(video_files)} video files")
+            
+            # Keep only first 10 videos (5 games × 2 cameras)
+            if len(video_files) > 10:
+                excess_videos = video_files[10:]
+                logger.info(f"🗑️ Removing {len(excess_videos)} excess video files")
+                
+                for video in excess_videos:
+                    try:
+                        os.remove(video)
+                        logger.info(f"✅ Removed: {os.path.basename(video)}")
+                    except Exception as e:
+                        logger.warning(f"⚠️ Failed to remove {video}: {e}")
+            
+            logger.info("✅ Cleanup completed")
+            
+        except Exception as e:
+            logger.warning(f"⚠️ Cleanup failed: {e}")
+    
     def get_directory_size(self, path):
         """Get directory size in GB"""
         total_size = 0
@@ -210,7 +245,10 @@ class RobustLocalTrainer:
             # Initialize downloader
             downloader = SoccerNetDownloader(LocalDirectory=local_directory)
             # Password should be set via environment variable or user input
-            downloader.password = os.getenv("SOCCERNET_PASSWORD", input("Enter SoccerNet password: "))
+            password = os.getenv("SOCCERNET_PASSWORD")
+            if not password:
+                password = input("Enter SoccerNet password: ")
+            downloader.password = password
             
             # Download labels for all splits (small, ~95MB)
             logger.info("📥 Downloading labels for all splits...")
@@ -223,22 +261,66 @@ class RobustLocalTrainer:
             logger.info("📥 Downloading limited videos with space monitoring...")
             logger.info(f"⚠️ Will stop when {self.max_disk_usage}GB is reached...")
             
-            # Download videos for train split only (most efficient for training)
-            logger.info("📥 Downloading 224p videos for training...")
+            # Get list of available games and limit to first few
+            logger.info("📋 Getting list of available games...")
             try:
-                # Download videos using the correct API
-                downloader.downloadGames(
-                    files=["1_224p.mkv", "2_224p.mkv"], 
-                    split=["train"]  # Only train split to save space
-                )
-                logger.info("✅ Video download completed successfully!")
+                # Get available games from the downloaded labels
+                games_dir = os.path.join(local_directory, "SoccerNet")
+                available_games = []
                 
-                # Check final size
-                current_size = self.get_directory_size(local_directory)
-                logger.info(f"💾 Final dataset size: {current_size:.1f}GB")
+                # Find all game directories that have labels
+                for league_dir in os.listdir(games_dir):
+                    league_path = os.path.join(games_dir, league_dir)
+                    if os.path.isdir(league_path):
+                        for season_dir in os.listdir(league_path):
+                            season_path = os.path.join(league_path, season_dir)
+                            if os.path.isdir(season_path):
+                                for game_dir in os.listdir(season_path):
+                                    game_path = os.path.join(season_path, game_dir)
+                                    if os.path.isdir(game_path):
+                                        labels_file = os.path.join(game_path, "Labels-v2.json")
+                                        if os.path.exists(labels_file):
+                                            available_games.append(game_path)
+                
+                logger.info(f"📊 Found {len(available_games)} games with labels")
+                
+                # Limit to first 5 games to save space
+                limited_games = available_games[:5]
+                logger.info(f"🎯 Limiting to {len(limited_games)} games for disk space")
+                
+                # Download videos for limited games only
+                downloaded_count = 0
+                for i, game_path in enumerate(limited_games):
+                    if not self.check_space_available():
+                        logger.warning("⚠️ Insufficient disk space, stopping video download...")
+                        break
+                    
+                    game_name = os.path.basename(game_path)
+                    logger.info(f"📥 Downloading game {i+1}/{len(limited_games)}: {game_name}")
+                    
+                    try:
+                        # Download videos for this specific game
+                        downloader.downloadGame(game_path, files=["1_224p.mkv", "2_224p.mkv"])
+                        downloaded_count += 1
+                        logger.info(f"✅ Downloaded game {i+1}: {game_name}")
+                        
+                        # Check size after each game
+                        current_size = self.get_directory_size(local_directory)
+                        logger.info(f"💾 Current dataset size: {current_size:.1f}GB")
+                        
+                        if current_size >= self.max_disk_usage:
+                            logger.warning(f"⚠️ Reached disk limit ({self.max_disk_usage}GB), cleaning up...")
+                            self.cleanup_excess_videos(local_directory)
+                            break
+                            
+                    except Exception as game_error:
+                        logger.warning(f"⚠️ Failed to download game {game_name}: {game_error}")
+                        continue
+                
+                logger.info(f"✅ Downloaded {downloaded_count} games successfully!")
                 
             except Exception as e:
-                logger.warning(f"Video download failed: {e}")
+                logger.warning(f"Limited video download failed: {e}")
                 logger.info("Continuing with labels only...")
             
             logger.info("✅ Partial SoccerNet download completed!")

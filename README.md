@@ -222,7 +222,7 @@ This project is licensed under the MIT License
 - ** Issues** : [GitHub Issues](https://github.com/Web8080/AI_Powered_football_analytics/issues)
 
 - ** Email*
-* : support@godseye-ai.com
+* : victoribhafidon@outlook.com
 
 --
 -
